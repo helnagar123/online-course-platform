@@ -1,16 +1,34 @@
 import mongoose from 'mongoose';
+
 import env from './env.js';
 import logger from './logger.js';
 
+mongoose.set(
+  'sanitizeFilter',
+  true
+);
+
+mongoose.set(
+  'strictQuery',
+  true
+);
+
 const connectDB = async () => {
   try {
-    const connection = await mongoose.connect(env.mongodbUri);
+    const connection =
+      await mongoose.connect(
+        env.mongodbUri
+      );
 
     logger.info(
       `MongoDB connected: ${connection.connection.host}/${connection.connection.name}`
     );
   } catch (error) {
-    logger.error(error, 'MongoDB connection failed');
+    logger.error(
+      error,
+      'MongoDB connection failed'
+    );
+
     throw error;
   }
 };

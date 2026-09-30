@@ -20,10 +20,15 @@ import {
   logoutSchema
 } from '../validators/auth.validator.js';
 
+import {
+  authRateLimiter
+} from '../middleware/rateLimiter.middleware.js';
+
 const router = Router();
 
 router.post(
   '/register',
+  authRateLimiter,
   validate({
     body: registerSchema
   }),
@@ -32,6 +37,7 @@ router.post(
 
 router.post(
   '/login',
+  authRateLimiter,
   validate({
     body: loginSchema
   }),
@@ -40,6 +46,7 @@ router.post(
 
 router.post(
   '/refresh',
+  authRateLimiter,
   validate({
     body: refreshTokenSchema
   }),

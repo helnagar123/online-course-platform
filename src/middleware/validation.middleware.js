@@ -1,3 +1,5 @@
+import AppError from '../utils/AppError.js';
+
 const validationOptions = {
   abortEarly: false,
   allowUnknown: false,
@@ -9,19 +11,26 @@ const validate = (schemas) => {
   return (req, res, next) => {
     const validationErrors = {};
 
-    for (const [source, schema] of Object.entries(schemas)) {
+    for (
+      const [source, schema]
+      of Object.entries(schemas)
+    ) {
       const result = schema.validate(
         req[source],
         validationOptions
       );
 
       if (result.error) {
-        validationErrors[source] = result.error.details.map(
-          (detail) => ({
-            field: detail.path.join('.'),
-            message: detail.message
-          })
-        );
+        validationErrors[source] =
+          result.error.details.map(
+            (detail) => ({
+              field:
+                detail.path.join('.'),
+
+              message:
+                detail.message
+            })
+          );
 
         continue;
       }
@@ -29,12 +38,18 @@ const validate = (schemas) => {
       req[source] = result.value;
     }
 
-    if (Object.keys(validationErrors).length > 0) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Validation failed',
-        errors: validationErrors
-      });
+    if (
+      Object.keys(
+        validationErrors
+      ).length > 0
+    ) {
+      return next(
+        new AppError(
+          'Validation failed',
+          400,
+          validationErrors
+        )
+      );
     }
 
     next();

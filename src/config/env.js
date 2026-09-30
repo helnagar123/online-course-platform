@@ -24,6 +24,35 @@ const env = {
       '7d'
   },
 
+  cors: {
+    origins:
+      process.env.CORS_ORIGINS
+        ? process.env.CORS_ORIGINS
+            .split(',')
+            .map((origin) =>
+              origin.trim()
+            )
+            .filter(Boolean)
+        : []
+  },
+
+  rateLimit: {
+    windowMs:
+      Number(
+        process.env.RATE_LIMIT_WINDOW_MS
+      ) || 15 * 60 * 1000,
+
+    max:
+      Number(
+        process.env.RATE_LIMIT_MAX
+      ) || 100,
+
+    authMax:
+      Number(
+        process.env.AUTH_RATE_LIMIT_MAX
+      ) || 10
+  },
+
   logLevel:
     process.env.LOG_LEVEL || 'info'
 };
@@ -41,7 +70,9 @@ const requiredEnvironmentVariables = [
 
 const missingEnvironmentVariables =
   requiredEnvironmentVariables
-    .filter(([, value]) => !value)
+    .filter(
+      ([, value]) => !value
+    )
     .map(([key]) => key);
 
 if (
