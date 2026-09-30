@@ -26,3 +26,10 @@ export const updateCategorySchema = Joi.object({
 
   isActive: Joi.boolean()
 }).min(1);
+
+export const categoryIdParamSchema = Joi.object({
+  categoryId: Joi.string()
+    .hex()
+    .length(24)
+    .required()
+});
