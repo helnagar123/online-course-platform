@@ -1,7 +1,9 @@
 import jwt from 'jsonwebtoken';
 import env from '../config/env.js';
 
-const generateAccessToken = (user) => {
+const generateAccessToken = (
+  user
+) => {
   return jwt.sign(
     {
       sub: user._id.toString(),
@@ -10,12 +12,15 @@ const generateAccessToken = (user) => {
     },
     env.jwt.accessSecret,
     {
-      expiresIn: env.jwt.accessExpiresIn
+      expiresIn:
+        env.jwt.accessExpiresIn
     }
   );
 };
 
-const verifyAccessToken = (token) => {
+const verifyAccessToken = (
+  token
+) => {
   return jwt.verify(
     token,
     env.jwt.accessSecret

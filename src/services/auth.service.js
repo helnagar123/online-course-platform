@@ -3,15 +3,26 @@ import crypto from 'crypto';
 import User from '../models/User.js';
 import RefreshToken from '../models/RefreshToken.js';
 import AppError from '../utils/AppError.js';
+
 import {
   hashPassword,
   comparePassword
 } from '../utils/password.js';
+
 import {
   generateAccessToken
 } from '../utils/jwt.js';
 
+import env from '../config/env.js';
+
+import parseDurationToMilliseconds from '../utils/time.js';
+
 const REFRESH_TOKEN_BYTES = 64;
+
+const refreshTokenLifetime =
+  parseDurationToMilliseconds(
+    env.jwt.refreshExpiresIn
+  );
 
 const hashRefreshToken = (token) => {
   return crypto
@@ -47,7 +58,8 @@ const createRefreshTokenRecord = async (
     hashRefreshToken(rawRefreshToken);
 
   const expiresAt = new Date(
-    Date.now() + 7 * 24 * 60 * 60 * 1000
+    Date.now() +
+     refreshTokenLifetime
   );
 
   await RefreshToken.create({
@@ -228,12 +240,22 @@ const refreshAccessToken = async (
 
   const newRefreshToken =
     await RefreshToken.create({
-      user: storedToken.user._id,
-      tokenHash: newTokenHash,
+      user:
+        storedToken.user._id,
+
+      tokenHash:
+        newTokenHash,
+
       expiresAt: new Date(
         Date.now() +
-          7 * 24 * 60 * 60 * 1000
-      )
+          refreshTokenLifetime
+      ),
+
+      userAgent:
+        storedToken.userAgent,
+
+      ipAddress:
+        storedToken.ipAddress
     });
 
   storedToken.revokedAt = new Date();
