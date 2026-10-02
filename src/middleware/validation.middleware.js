@@ -35,7 +35,20 @@ const validate = (schemas) => {
         continue;
       }
 
-      req[source] = result.value;
+      if (source === 'query') {
+        Object.keys(req.query).forEach(
+          (key) => {
+            delete req.query[key];
+          }
+        );
+
+        Object.assign(
+          req.query,
+          result.value
+        );
+      } else {
+        req[source] = result.value;
+      }
     }
 
     if (

@@ -3,25 +3,35 @@ import Lesson from '../models/Lesson.js';
 import Enrollment from '../models/Enrollment.js';
 import AppError from '../utils/AppError.js';
 
-const createComment = async (studentId, lessonId, content) => {
+const createComment = async (
+  studentId,
+  lessonId,
+  content
+) => {
   const lesson = await Lesson.findOne({
     _id: lessonId,
     isPublished: true
   });
 
   if (!lesson) {
-    throw new AppError('Lesson not found or unavailable', 404);
+    throw new AppError(
+      'Lesson not found or unavailable',
+      404
+    );
   }
 
-  const enrollment = await Enrollment.findOne({
-    student: studentId,
-    course: lesson.course,
-    status: {
-      $in: ['active', 'completed']
-    }
-  });
+  const enrollment =
+    await Enrollment.findOne({
+      student: studentId,
+      course: lesson.course
+    });
 
-  if (!enrollment) {
+  if (
+    !enrollment ||
+    !['active', 'completed'].includes(
+      enrollment.status
+    )
+  ) {
     throw new AppError(
       'You must be enrolled in this course to comment',
       403

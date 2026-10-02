@@ -1,18 +1,36 @@
 import Category from '../models/Category.js';
 import AppError from '../utils/AppError.js';
 
-const createCategory = async (categoryData) => {
-  const { name, description } = categoryData;
+const escapeRegex = (value) => {
+  return value.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    '\\$&'
+  );
+};
 
-  const existingCategory = await Category.findOne({
-    name: {
-      $regex: `^${name}$`,
-      $options: 'i'
-    }
-  });
+const createCategory = async (
+  categoryData
+) => {
+  const { name, description } =
+    categoryData;
+
+  const safeName = escapeRegex(
+    name.trim()
+  );
+
+  const existingCategory =
+    await Category.findOne({
+      name: new RegExp(
+        `^${safeName}$`,
+        'i'
+      )
+    });
 
   if (existingCategory) {
-    throw new AppError('Category already exists', 409);
+    throw new AppError(
+      'Category already exists',
+      409
+    );
   }
 
   const slug = name
@@ -21,66 +39,108 @@ const createCategory = async (categoryData) => {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-  const category = await Category.create({
-    name: name.trim(),
-    slug,
-    description
-  });
+  const category =
+    await Category.create({
+      name: name.trim(),
+      slug,
+      description
+    });
 
   return category;
 };
 
-const getCategories = async ({ includeInactive = false } = {}) => {
+const getCategories = async ({
+  includeInactive = false
+} = {}) => {
   const query = {};
 
   if (!includeInactive) {
     query.isActive = true;
   }
 
-  return Category.find(query).sort({ name: 1 });
+  return Category.find(query).sort({
+    name: 1
+  });
 };
 
-const getCategoryById = async (categoryId) => {
-  const category = await Category.findById(categoryId);
+const getCategoryById = async (
+  categoryId
+) => {
+  const category =
+    await Category.findById(categoryId);
 
   if (!category) {
-    throw new AppError('Category not found', 404);
+    throw new AppError(
+      'Category not found',
+      404
+    );
   }
 
   return category;
 };
 
-const updateCategory = async (categoryId, updateData) => {
-  const category = await getCategoryById(categoryId);
+const updateCategory = async (
+  categoryId,
+  updateData
+) => {
+  const category =
+    await getCategoryById(categoryId);
 
   if (updateData.name) {
-    const duplicateCategory = await Category.findOne({
-      _id: { $ne: categoryId },
-      name: {
-        $regex: `^${updateData.name}$`,
-        $options: 'i'
-      }
-    });
+    const safeName = escapeRegex(
+      updateData.name.trim()
+    );
 
-    if (duplicateCategory) {
-      throw new AppError('Category name already exists', 409);
+    const duplicateCategory =
+      await Category.findOne({
+        name: new RegExp(
+          `^${safeName}$`,
+          'i'
+        )
+      });
+
+    if (
+      duplicateCategory &&
+      duplicateCategory._id.toString() !==
+        categoryId
+    ) {
+      throw new AppError(
+        'Category name already exists',
+        409
+      );
     }
 
-    category.name = updateData.name.trim();
+    category.name =
+      updateData.name.trim();
 
-    category.slug = updateData.name
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
+    category.slug =
+      updateData.name
+        .trim()
+        .toLowerCase()
+        .replace(
+          /[^a-z0-9]+/g,
+          '-'
+        )
+        .replace(
+          /^-|-$/g,
+          ''
+        );
   }
 
-  if (updateData.description !== undefined) {
-    category.description = updateData.description;
+  if (
+    updateData.description !==
+    undefined
+  ) {
+    category.description =
+      updateData.description;
   }
 
-  if (updateData.isActive !== undefined) {
-    category.isActive = updateData.isActive;
+  if (
+    updateData.isActive !==
+    undefined
+  ) {
+    category.isActive =
+      updateData.isActive;
   }
 
   await category.save();
@@ -88,15 +148,19 @@ const updateCategory = async (categoryId, updateData) => {
   return category;
 };
 
-const deactivateCategory = async (categoryId) => {
-  const category = await getCategoryById(categoryId);
+const deactivateCategory =
+  async (categoryId) => {
+    const category =
+      await getCategoryById(
+        categoryId
+      );
 
-  category.isActive = false;
+    category.isActive = false;
 
-  await category.save();
+    await category.save();
 
-  return category;
-};
+    return category;
+  };
 
 export {
   createCategory,

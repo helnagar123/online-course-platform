@@ -22,13 +22,15 @@ const createRating = async (
 
   const enrollment = await Enrollment.findOne({
     student: studentId,
-    course: courseId,
-    status: {
-      $in: ['active', 'completed']
-    }
+    course: courseId
   });
 
-  if (!enrollment) {
+  if (
+    !enrollment ||
+    !['active', 'completed'].includes(
+      enrollment.status
+    )
+  ) {
     throw new AppError(
       'You must be enrolled in this course to rate it',
       403

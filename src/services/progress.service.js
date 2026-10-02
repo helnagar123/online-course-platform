@@ -20,71 +20,98 @@ const updateLessonProgress = async (
     );
   }
 
-  const enrollment = await Enrollment.findOne({
-    student: studentId,
-    course: lesson.course,
-    status: {
-      $in: ['active', 'completed']
-    }
-  });
+  const enrollment =
+    await Enrollment.findOne({
+      student: studentId,
+      course: lesson.course
+    });
 
-  if (!enrollment) {
+  if (
+    !enrollment ||
+    !['active', 'completed'].includes(
+      enrollment.status
+    )
+  ) {
     throw new AppError(
       'You are not enrolled in this course',
       403
     );
   }
 
-  const progress = await LessonProgress.findOneAndUpdate(
-    {
-      enrollment: enrollment._id,
-      lesson: lessonId
-    },
-    {
-      completed,
-      completedAt: completed ? new Date() : null,
-      lastViewedAt: new Date()
-    },
-    {
-      new: true,
-      upsert: true,
-      runValidators: true,
-      setDefaultsOnInsert: true
-    }
-  );
-
-  const publishedLessons = await Lesson.find({
-    course: lesson.course,
-    isPublished: true
-  }).select('_id');
-
-  const lessonIds = publishedLessons.map(
-    (publishedLesson) => publishedLesson._id
-  );
-
-  const completedLessons =
-    await LessonProgress.countDocuments({
-      enrollment: enrollment._id,
-      lesson: {
-        $in: lessonIds
+  const progress =
+    await LessonProgress.findOneAndUpdate(
+      {
+        enrollment: enrollment._id,
+        lesson: lessonId
       },
-      completed: true
+      {
+        completed,
+        completedAt: completed
+          ? new Date()
+          : null,
+        lastViewedAt: new Date()
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true
+      }
+    );
+
+  const publishedLessons =
+    await Lesson.find({
+      course: lesson.course,
+      isPublished: true
+    }).select('_id');
+
+  const publishedLessonIds =
+    new Set(
+      publishedLessons.map(
+        (publishedLesson) =>
+          publishedLesson._id.toString()
+      )
+    );
+
+  const progressRecords =
+    await LessonProgress.find({
+      enrollment: enrollment._id
     });
 
-  const totalLessons = lessonIds.length;
+  const completedLessons =
+    progressRecords.filter(
+      (progressRecord) =>
+        progressRecord.completed &&
+        progressRecord.lesson &&
+        publishedLessonIds.has(
+          progressRecord.lesson.toString()
+        )
+    ).length;
+
+  const totalLessons =
+    publishedLessons.length;
 
   const progressPercentage =
     totalLessons === 0
       ? 0
       : Math.round(
-          (completedLessons / totalLessons) * 100
-        );
+        (completedLessons /
+          totalLessons) *
+        100
+      );
 
   if (progressPercentage === 100) {
-    enrollment.status = 'completed';
-    enrollment.completedAt = new Date();
-  } else if (enrollment.status === 'completed') {
+    enrollment.status =
+      'completed';
+
+    enrollment.completedAt =
+      new Date();
+  } else if (
+    enrollment.status ===
+    'completed'
+  ) {
     enrollment.status = 'active';
+
     enrollment.completedAt = null;
   }
 
@@ -104,13 +131,17 @@ const getEnrollmentProgress = async (
   studentId,
   enrollmentId
 ) => {
-  const enrollment = await Enrollment.findOne({
-    _id: enrollmentId,
-    student: studentId
-  });
+  const enrollment =
+    await Enrollment.findOne({
+      _id: enrollmentId,
+      student: studentId
+    });
 
   if (!enrollment) {
-    throw new AppError('Enrollment not found', 404);
+    throw new AppError(
+      'Enrollment not found',
+      404
+    );
   }
 
   const lessons = await Lesson.find({
@@ -120,32 +151,43 @@ const getEnrollmentProgress = async (
     .select('_id title order')
     .sort({ order: 1 });
 
-  const lessonIds = lessons.map(
-    (lesson) => lesson._id
-  );
+  const publishedLessonIds =
+    new Set(
+      lessons.map(
+        (lesson) => lesson._id.toString()
+      )
+    );
 
   const progressRecords =
     await LessonProgress.find({
-      enrollment: enrollment._id,
-      lesson: {
-        $in: lessonIds
-      }
+      enrollment: enrollment._id
     }).populate(
       'lesson',
       'title order'
     );
 
-  const completedLessons =
+  const publishedProgressRecords =
     progressRecords.filter(
+      (progressRecord) =>
+        progressRecord.lesson &&
+        publishedLessonIds.has(
+          progressRecord.lesson._id.toString()
+        )
+    );
+
+  const completedLessons =
+    publishedProgressRecords.filter(
       (item) => item.completed
     ).length;
 
-  const totalLessons = lessons.length;
+  const totalLessons =
+    lessons.length;
 
   return {
     enrollment,
     lessons,
-    progress: progressRecords,
+    progress:
+      publishedProgressRecords,
     summary: {
       totalLessons,
       completedLessons,
@@ -153,8 +195,10 @@ const getEnrollmentProgress = async (
         totalLessons === 0
           ? 0
           : Math.round(
-              (completedLessons / totalLessons) * 100
-            )
+            (completedLessons /
+              totalLessons) *
+            100
+          )
     }
   };
 };

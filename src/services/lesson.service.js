@@ -88,12 +88,15 @@ const updateLesson = async (
 
   if (updateData.order !== undefined) {
     const duplicateOrder = await Lesson.findOne({
-      _id: { $ne: lessonId },
       course: lesson.course,
       order: updateData.order
     });
 
-    if (duplicateOrder) {
+    if (
+      duplicateOrder &&
+      duplicateOrder._id.toString() !==
+      lessonId.toString()
+    ) {
       throw new AppError(
         'A lesson with this order already exists',
         409

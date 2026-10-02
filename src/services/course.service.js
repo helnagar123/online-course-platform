@@ -168,11 +168,14 @@ const updateCourse = async (
       .replace(/^-|-$/g, '');
 
     const duplicateCourse = await Course.findOne({
-      _id: { $ne: courseId },
       slug
     });
 
-    if (duplicateCourse) {
+    if (
+      duplicateCourse &&
+      duplicateCourse._id.toString() !==
+        courseId.toString()
+    ) {
       throw new AppError(
         'A course with this title already exists',
         409
