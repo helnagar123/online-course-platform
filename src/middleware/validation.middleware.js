@@ -36,16 +36,12 @@ const validate = (schemas) => {
       }
 
       if (source === 'query') {
-        Object.keys(req.query).forEach(
-          (key) => {
-            delete req.query[key];
-          }
-        );
-
-        Object.assign(
-          req.query,
-          result.value
-        );
+        Object.defineProperty(req, 'query', {
+          value: result.value,
+          writable: true,
+          configurable: true,
+          enumerable: true
+        });
       } else {
         req[source] = result.value;
       }
