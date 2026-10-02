@@ -11,6 +11,24 @@ import ROLES from '../constants/roles.js';
 
 const router = Router();
 
+/**
+ * @swagger
+ * /admin-dashboard:
+ *   get:
+ *     tags:
+ *       - Admin Dashboard
+ *     summary: Get admin dashboard
+ *     description: Retrieve dashboard statistics and data for the authenticated admin.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Admin dashboard retrieved successfully
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Admin role required
+ */
 router.get(
   '/',
   authenticate,
