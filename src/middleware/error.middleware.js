@@ -1,14 +1,19 @@
 import mongoose from 'mongoose';
 
+import env from '../config/env.js';
+import logger from '../config/logger.js';
 import AppError from '../utils/AppError.js';
 
-import logger from '../config/logger.js';
-
-const getDuplicateKeyDetails = (error) => {
+const getDuplicateKeyDetails = (
+  error
+) => {
   const details = {};
 
   if (error.keyValue) {
-    for (const [field, value] of Object.entries(
+    for (const [
+      field,
+      value
+    ] of Object.entries(
       error.keyValue
     )) {
       details[field] = {
@@ -21,15 +26,20 @@ const getDuplicateKeyDetails = (error) => {
   return details;
 };
 
-const getValidationDetails = (error) => {
+const getValidationDetails = (
+  error
+) => {
   const details = {};
 
   for (const [
     field,
     validationError
-  ] of Object.entries(error.errors)) {
+  ] of Object.entries(
+    error.errors
+  )) {
     details[field] = {
-      message: validationError.message
+      message:
+        validationError.message
     };
   }
 
@@ -47,7 +57,8 @@ const errorMiddleware = (
   }
 
   let statusCode = 500;
-  let message = 'Internal server error';
+  let message =
+    'Internal server error';
   let details = null;
 
   if (error instanceof AppError) {
@@ -55,17 +66,21 @@ const errorMiddleware = (
     message = error.message;
     details = error.details;
   } else if (
-    error instanceof mongoose.Error.ValidationError
+    error instanceof
+    mongoose.Error.ValidationError
   ) {
     statusCode = 400;
-    message = 'Database validation failed';
+    message =
+      'Database validation failed';
     details =
       getValidationDetails(error);
   } else if (
-    error instanceof mongoose.Error.CastError
+    error instanceof
+    mongoose.Error.CastError
   ) {
     statusCode = 400;
-    message = `Invalid value for field: ${error.path}`;
+    message =
+      `Invalid value for field: ${error.path}`;
   } else if (error?.code === 11000) {
     statusCode = 409;
     message = 'Duplicate resource';
@@ -73,16 +88,29 @@ const errorMiddleware = (
       getDuplicateKeyDetails(error);
   } else if (
     error instanceof SyntaxError &&
-    error.type === 'entity.parse.failed'
+    error.type ===
+      'entity.parse.failed'
   ) {
     statusCode = 400;
     message = 'Invalid JSON payload';
   } else if (
-    error?.name === 'TokenExpiredError' ||
-    error?.name === 'JsonWebTokenError'
+    error?.name ===
+      'TokenExpiredError' ||
+    error?.name ===
+      'JsonWebTokenError' ||
+    error?.name ===
+      'NotBeforeError'
   ) {
     statusCode = 401;
-    message = 'Invalid or expired token';
+    message =
+      'Invalid or expired token';
+  } else if (
+    error?.message ===
+    'Origin not allowed by CORS'
+  ) {
+    statusCode = 403;
+    message =
+      'Origin not allowed by CORS';
   }
 
   const errorResponse = {
@@ -95,27 +123,31 @@ const errorMiddleware = (
   }
 
   if (
-    process.env.NODE_ENV !==
-    'production'
+    env.nodeEnv !== 'production' &&
+    error.stack
   ) {
-    errorResponse.stack = error.stack;
+    errorResponse.stack =
+      error.stack;
   }
+
+  const logContext = {
+    method: req.method,
+    url: req.originalUrl,
+    statusCode
+  };
 
   if (statusCode >= 500) {
     logger.error(
       {
-        err: error,
-        method: req.method,
-        url: req.originalUrl
+        ...logContext,
+        err: error
       },
       'Unhandled application error'
     );
   } else {
     logger.warn(
       {
-        statusCode,
-        method: req.method,
-        url: req.originalUrl,
+        ...logContext,
         message
       },
       'Request failed'

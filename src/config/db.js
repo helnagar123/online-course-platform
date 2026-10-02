@@ -17,15 +17,30 @@ const connectDB = async () => {
   try {
     const connection =
       await mongoose.connect(
-        env.mongodbUri
+        env.mongodbUri,
+        {
+          serverSelectionTimeoutMS: 5000,
+          socketTimeoutMS: 45000,
+          maxPoolSize: 10,
+          minPoolSize: 2
+        }
       );
 
     logger.info(
-      `MongoDB connected: ${connection.connection.host}/${connection.connection.name}`
+      {
+        host: connection.connection.host,
+        database:
+          connection.connection.name
+      },
+      'MongoDB connected'
     );
+
+    return connection;
   } catch (error) {
     logger.error(
-      error,
+      {
+        err: error
+      },
       'MongoDB connection failed'
     );
 

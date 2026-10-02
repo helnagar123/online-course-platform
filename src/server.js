@@ -5,39 +5,164 @@ import env from './config/env.js';
 import connectDB from './config/db.js';
 import logger from './config/logger.js';
 
+let server;
+let isShuttingDown = false;
+
+const SHUTDOWN_TIMEOUT_MS = 10000;
+
+const gracefulShutdown = async (signal) => {
+  if (isShuttingDown) {
+    return;
+  }
+
+  isShuttingDown = true;
+
+  logger.info(
+    { signal },
+    'Graceful shutdown started'
+  );
+
+  const forceShutdownTimer =
+    setTimeout(() => {
+      logger.error(
+        'Graceful shutdown timeout exceeded. Forcing process exit.'
+      );
+
+      process.exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
+
+  forceShutdownTimer.unref();
+
+  try {
+    if (server) {
+      await new Promise((resolve) => {
+        server.close(() => {
+          logger.info(
+            'HTTP server closed'
+          );
+
+          resolve();
+        });
+      });
+    }
+
+    if (
+      mongoose.connection.readyState !== 0
+    ) {
+      await mongoose.connection.close();
+
+      logger.info(
+        'MongoDB connection closed'
+      );
+    }
+
+    clearTimeout(
+      forceShutdownTimer
+    );
+
+    logger.info(
+      'Graceful shutdown completed'
+    );
+
+    process.exit(0);
+  } catch (error) {
+    clearTimeout(
+      forceShutdownTimer
+    );
+
+    logger.error(
+      {
+        err: error
+      },
+      'Error during graceful shutdown'
+    );
+
+    process.exit(1);
+  }
+};
+
 const startServer = async () => {
   try {
     await connectDB();
 
-    const server = app.listen(env.port, () => {
-      logger.info(`Server running on port ${env.port}`);
-    });
+    server = app.listen(
+      env.port,
+      () => {
+        logger.info(
+          {
+            port: env.port,
+            environment: env.nodeEnv
+          },
+          'Server started'
+        );
+      }
+    );
 
-    const gracefulShutdown = async (signal) => {
-      logger.info(`${signal} received. Shutting down gracefully...`);
+    server.on(
+      'error',
+      (error) => {
+        logger.error(
+          {
+            err: error
+          },
+          'HTTP server error'
+        );
 
-      server.close(async () => {
-        logger.info('HTTP server closed');
-
-        try {
-          await mongoose.connection.close();
-
-          logger.info('MongoDB connection closed');
-
-          process.exit(0);
-        } catch (error) {
-          logger.error(error, 'Error during graceful shutdown');
-          process.exit(1);
-        }
-      });
-    };
-
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+        process.exit(1);
+      }
+    );
   } catch (error) {
-    logger.error(error, 'Failed to start server');
+    logger.error(
+      {
+        err: error
+      },
+      'Failed to start server'
+    );
+
     process.exit(1);
   }
 };
+
+process.on(
+  'SIGINT',
+  () => gracefulShutdown('SIGINT')
+);
+
+process.on(
+  'SIGTERM',
+  () => gracefulShutdown('SIGTERM')
+);
+
+process.on(
+  'uncaughtException',
+  (error) => {
+    logger.fatal(
+      {
+        err: error
+      },
+      'Uncaught exception'
+    );
+
+    gracefulShutdown(
+      'uncaughtException'
+    );
+  }
+);
+
+process.on(
+  'unhandledRejection',
+  (reason) => {
+    logger.fatal(
+      {
+        err: reason
+      },
+      'Unhandled promise rejection'
+    );
+
+    gracefulShutdown(
+      'unhandledRejection'
+    );
+  }
+);
 
 startServer();

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import pinoHttp from 'pino-http';
+import mongoose from 'mongoose';
 
 import logger from './config/logger.js';
 import env from './config/env.js';
@@ -16,14 +17,12 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger.js';
 
 const app = express();
+app.disable('x-powered-by');
 
 app.use(
   '/api-docs',
   swaggerUi.serve,
   swaggerUi.setup(swaggerSpec)
-);
-app.disable(
-  'x-powered-by'
 );
 
 app.use(
@@ -35,14 +34,9 @@ app.use(
     origin: (origin, callback) => {
       if (
         !origin ||
-        env.cors.origins.includes(
-          origin
-        )
+        env.cors.origins.includes(origin)
       ) {
-        return callback(
-          null,
-          true
-        );
+        return callback(null, true);
       }
 
       return callback(
@@ -80,6 +74,27 @@ app.get(
       status: 'success',
       message:
         'Online Course Platform API is running'
+    });
+  }
+);
+app.get(
+  '/ready',
+  (req, res) => {
+    const isDatabaseReady =
+      mongoose.connection.readyState === 1;
+
+    if (!isDatabaseReady) {
+      return res.status(503).json({
+        status: 'error',
+        message:
+          'Service is not ready'
+      });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      message:
+        'Online Course Platform API is ready'
     });
   }
 );
